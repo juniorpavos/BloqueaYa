@@ -55,7 +55,7 @@ th{font-size:12px;color:#666}.ed{padding:6px 9px;font-size:15px}
   <button class="big sec" id="btnCancel" style="display:none;margin-top:8px" onclick="cancelarEd()">Cancelar edición</button>
 </div>
 
-<div class="card">
+<div class="card" id="cardUpd">
   <h2>Actualizaciones</h2>
   <div class="muted">Versión instalada: <b id="verAct"></b></div>
   <div id="updInfo" class="muted" style="margin:8px 0"></div>
@@ -78,7 +78,7 @@ th{font-size:12px;color:#666}.ed{padding:6px 9px;font-size:15px}
 </div>
 
 <script>
-const BUILD=Number('__BUILD__')||0;let updUrl=null;
+const BUILD=Number('__BUILD__')||0;const PLAY='__TIENDA__'==='play';if(PLAY)document.getElementById('cardUpd').style.display='none';let updUrl=null;
 const DIAS=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'],DIASL=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 let D=JSON.parse(localStorage.getItem('mishoras')||'null')||{turnos:[],precios:[{desde:'2000-01-01',precio:4500}],inicio:4,abierto:null};
 let off=0,edIdx=null;
@@ -125,7 +125,7 @@ try{const r=await fetch('https://api.github.com/repos/juniorpavos/BloqueaYa/rele
 for(const x of l){const m=/^Horasdesalida-v1\.0\.(\d+)$/.exec(x.tag_name);if(m&&Number(m[1])>bn){const a=x.assets.find(a=>a.name=='Horasdesalida.apk');if(a){bn=Number(m[1]);best=a.browser_download_url}}}
 if(best&&bn>BUILD){updUrl=best;updInfo.textContent='Hay una versión nueva ('+bn+'). Tocá para bajarla e instalala encima: no se borran tus horas.';btnUpd.textContent='Descargar versión '+bn;btnUpd.className='big green'}
 else updInfo.textContent='Ya tenés la última versión.'}catch(e){updInfo.textContent='No se pudo revisar. Fijate que tengas internet.'}}
-setTimeout(()=>{if(navigator.onLine)buscarUpd()},1500);
+setTimeout(()=>{if(!PLAY&&navigator.onLine)buscarUpd()},1500);
 function mover(n){off+=n;render()}
 verAct.textContent=BUILD;mFecha.value=ymd(new Date());cDesde.value=ymd(new Date());render();
 </script></body></html>
