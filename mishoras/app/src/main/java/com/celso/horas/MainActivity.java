@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.WebChromeClient;
 public class MainActivity extends Activity {
     private WebView w;
     @Override protected void onCreate(Bundle b) {
@@ -13,6 +14,7 @@ public class MainActivity extends Activity {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         w.setWebViewClient(new WebViewClient());
+        w.setWebChromeClient(new WebChromeClient());
         w.loadUrl("file:///android_asset/index.html");
         setContentView(w);
     }
