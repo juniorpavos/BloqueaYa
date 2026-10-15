@@ -15,6 +15,7 @@ jobs:
         with: { distribution: temurin, java-version: '17' }
       - uses: gradle/actions/setup-gradle@v3
         with: { gradle-version: '8.7' }
+      - run: sed -i "s/__BUILD__/${{ github.run_number }}/" mishoras/app/src/main/assets/index.html
       - run: cd mishoras && gradle :app:assembleRelease --no-daemon
       - run: cp mishoras/app/build/outputs/apk/release/app-release.apk Horasdesalida.apk
       - uses: softprops/action-gh-release@v2
