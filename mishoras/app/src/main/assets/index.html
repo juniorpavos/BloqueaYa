@@ -56,6 +56,13 @@ th{font-size:12px;color:#666}.ed{padding:6px 9px;font-size:15px}
 </div>
 
 <div class="card">
+  <h2>Actualizaciones</h2>
+  <div class="muted">Versión instalada: <b id="verAct"></b></div>
+  <div id="updInfo" class="muted" style="margin:8px 0"></div>
+  <button class="big" id="btnUpd" onclick="buscarUpd()">Buscar actualización</button>
+</div>
+
+<div class="card">
   <h2>Ajustes</h2>
   <div class="row">
     <div class="f"><label>Nuevo precio por hora ($)</label><input type="number" id="cPrecio" inputmode="numeric"></div>
@@ -71,6 +78,7 @@ th{font-size:12px;color:#666}.ed{padding:6px 9px;font-size:15px}
 </div>
 
 <script>
+const BUILD=Number('__BUILD__')||0;let updUrl=null;
 const DIAS=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'],DIASL=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 let D=JSON.parse(localStorage.getItem('mishoras')||'null')||{turnos:[],precios:[{desde:'2000-01-01',precio:4500}],inicio:4,abierto:null};
 let off=0,edIdx=null;
@@ -111,6 +119,13 @@ function anular(){if(confirm('¿Anular la entrada marcada?')){D.abierto=null;sav
 function borrar(i){if(confirm('¿Borrar este turno?')){D.turnos.splice(i,1);if(edIdx!==null)cancelarEd();save();render()}}
 function guardarPrecio(){const p=Number(cPrecio.value),f=cDesde.value;if(!(p>0)||!f){alert('Poné el precio y desde qué fecha');return}D.precios=D.precios.filter(x=>x.desde!=f);D.precios.push({desde:f,precio:p});save();cPrecio.value='';render();alert('Listo: '+plata(p)+' la hora desde el '+f.split('-').reverse().join('/'))}
 function guardarDia(){D.inicio=Number(cDia.value);save();off=0;render()}
+async function buscarUpd(){if(updUrl){try{Android.abrir(updUrl)}catch(e){location.href=updUrl}return}
+updInfo.textContent='Buscando...';
+try{const r=await fetch('https://api.github.com/repos/juniorpavos/BloqueaYa/releases?per_page=50');const l=await r.json();let best=null,bn=0;
+for(const x of l){const m=/^Horasdesalida-v1\.0\.(\d+)$/.exec(x.tag_name);if(m&&Number(m[1])>bn){const a=x.assets.find(a=>a.name=='Horasdesalida.apk');if(a){bn=Number(m[1]);best=a.browser_download_url}}}
+if(best&&bn>BUILD){updUrl=best;updInfo.textContent='Hay una versión nueva ('+bn+'). Tocá para bajarla e instalala encima: no se borran tus horas.';btnUpd.textContent='Descargar versión '+bn;btnUpd.className='big green'}
+else updInfo.textContent='Ya tenés la última versión.'}catch(e){updInfo.textContent='No se pudo revisar. Fijate que tengas internet.'}}
+setTimeout(()=>{if(navigator.onLine)buscarUpd()},1500);
 function mover(n){off+=n;render()}
-mFecha.value=ymd(new Date());cDesde.value=ymd(new Date());render();
+verAct.textContent=BUILD;mFecha.value=ymd(new Date());cDesde.value=ymd(new Date());render();
 </script></body></html>
