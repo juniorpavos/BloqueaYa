@@ -20,6 +20,11 @@ public class MainActivity extends Activity {
         w.setWebChromeClient(new WebChromeClient());
         w.addJavascriptInterface(new Puente(), "Android");
         w.loadUrl("file:///android_asset/index.html");
+        w.setOnApplyWindowInsetsListener((v, in) -> {
+            int t = in.getSystemWindowInsetTop(), bo = in.getSystemWindowInsetBottom();
+            v.setPadding(in.getSystemWindowInsetLeft(), t, in.getSystemWindowInsetRight(), bo);
+            return in.consumeSystemWindowInsets();
+        });
         setContentView(w);
     }
     class Puente { @JavascriptInterface public void abrir(String u) { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(u))); } }
