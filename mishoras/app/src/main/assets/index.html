@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mis Horas</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,Roboto,sans-serif;background:#f2f4f8;color:#1b1f27}
+header{background:#1565C0;color:#fff;padding:16px}header h1{margin:0;font-size:20px}
+.card{background:#fff;margin:12px;border-radius:14px;padding:14px;box-shadow:0 1px 3px #0002}
+h2{font-size:16px;margin:0 0 10px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+label{font-size:13px;color:#555;display:block;margin-bottom:3px}
+input{font-size:16px;padding:9px;border:1px solid #ccd;border-radius:8px;width:100%}
+.f{flex:1;min-width:90px}
+button{font-size:15px;padding:11px 14px;border:0;border-radius:10px;background:#1565C0;color:#fff;font-weight:600}
+button.sec{background:#e3eaf6;color:#1565C0}button.red{background:#c62828}button.green{background:#2e7d32}
+.big{width:100%;padding:16px;font-size:18px}
+.tot{display:flex;justify-content:space-between;text-align:center}.tot div{flex:1}
+.tot b{display:block;font-size:22px;color:#1565C0}.tot span{font-size:12px;color:#666}
+table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;border-bottom:1px solid #eee;text-align:left}
+th{font-size:12px;color:#666}.x{color:#c62828;font-weight:bold;padding:4px 8px;background:none}
+.nav{display:flex;justify-content:space-between;align-items:center}.nav button{padding:8px 14px}
+.muted{color:#666;font-size:13px}.pay{background:#e8f5e9;color:#2e7d32;padding:8px;border-radius:8px;margin-top:10px;font-size:14px;text-align:center}
+</style></head><body>
+<header><h1>⏱ Mis Horas</h1><div class="muted" style="color:#dce7f7" id="rateInfo"></div></header>
+
+<div class="card" id="ficharCard">
+  <h2>Fichar</h2>
+  <div id="openInfo" class="muted" style="margin-bottom:8px"></div>
+  <button class="big green" id="btnFichar" onclick="fichar()">Entré ahora</button>
+</div>
+
+<div class="card">
+  <div class="nav"><button class="sec" onclick="mover(-1)">◀</button>
+    <div style="text-align:center"><b id="semTit"></b><div class="muted" id="semRango"></div></div>
+    <button class="sec" onclick="mover(1)">▶</button></div>
+  <div class="tot" style="margin-top:12px">
+    <div><b id="totH">0</b><span>horas</span></div>
+    <div><b id="totP">$0</b><span>a cobrar</span></div>
+    <div><b id="totD">0</b><span>días</span></div>
+  </div>
+  <div class="pay" id="payDay"></div>
+  <table style="margin-top:10px"><thead><tr><th>Día</th><th>Horario</th><th>Horas</th><th>$</th><th></th></tr></thead><tbody id="lista"></tbody></table>
+</div>
+
+<div class="card">
+  <h2>Cargar a mano</h2>
+  <div class="row">
+    <div class="f" style="min-width:140px"><label>Fecha</label><input type="date" id="mFecha"></div>
+    <div class="f"><label>Entrada</label><input type="time" id="mIn"></div>
+    <div class="f"><label>Salida</label><input type="time" id="mOut"></div>
+  </div>
+  <p class="muted">Si la salida es más temprano que la entrada, cuenta como que saliste al día siguiente (turno noche).</p>
+  <button class="big" onclick="agregar()">Agregar</button>
+</div>
+
+<div class="card">
+  <h2>Ajustes</h2>
+  <div class="row">
+    <div class="f"><label>Nuevo precio por hora ($)</label><input type="number" id="cPrecio" inputmode="numeric"></div>
+    <div class="f" style="min-width:140px"><label>Rige desde</label><input type="date" id="cDesde"></div>
+  </div>
+  <p class="muted">Las horas anteriores a esa fecha se siguen cobrando al precio viejo.</p>
+  <button onclick="guardarPrecio()">Guardar precio</button>
+  <div id="hist" class="muted" style="margin-top:8px"></div>
+  <div style="margin-top:14px"><label>La semana arranca el</label>
+    <select id="cDia" onchange="guardarDia()" style="font-size:16px;padding:9px;border-radius:8px;width:100%">
+      <option value="1">Lunes</option><option value="2">Martes</option><option value="3">Miércoles</option><option value="4">Jueves</option><option value="5">Viernes</option><option value="6">Sábado</option><option value="0">Domingo</option>
+    </select></div>
+</div>
+
+<script>
+const DIAS=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'],DIASL=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+let D=JSON.parse(localStorage.getItem('mishoras')||'null')||{turnos:[],precios:[{desde:'2000-01-01',precio:4500}],inicio:4,abierto:null};
+let off=0;
+const save=()=>localStorage.setItem('mishoras',JSON.stringify(D));
+const p2=n=>String(n).padStart(2,'0');
+const ymd=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
+const hm=d=>p2(d.getHours())+':'+p2(d.getMinutes());
+const parse=s=>{const[a,b,c]=s.split('-').map(Number);return new Date(a,b-1,c)};
+const plata=n=>'$'+Math.round(n).toLocaleString('es-AR');
+const fh=m=>{const h=Math.floor(m/60),r=Math.round(m%60);return r?h+'h '+r+'m':h+'h'};
+function precioEn(f){let p=D.precios.slice().sort((a,b)=>a.desde<b.desde?-1:1),v=p[0].precio;for(const x of p)if(x.desde<=f)v=x.precio;return v}
+function mins(t){const[a,b]=t.in.split(':').map(Number),[c,d]=t.out.split(':').map(Number);let m=(c*60+d)-(a*60+b);if(m<=0)m+=1440;return m}
+function semana(){const h=new Date();h.setHours(0,0,0,0);let s=new Date(h);s.setDate(h.getDate()-((h.getDay()-D.inicio+7)%7)+off*7);let e=new Date(s);e.setDate(s.getDate()+6);let pay=new Date(s);pay.setDate(s.getDate()+7);return{s,e,pay}}
+function render(){
+  const{s,e,pay}=semana(),S=ymd(s),E=ymd(e);
+  document.getElementById('semTit').textContent=off==0?'Esta semana':off==-1?'Semana pasada':off<0?'Hace '+(-off)+' semanas':'Semana próxima';
+  document.getElementById('semRango').textContent=DIAS[s.getDay()]+' '+s.getDate()+'/'+(s.getMonth()+1)+' al '+DIAS[e.getDay()]+' '+e.getDate()+'/'+(e.getMonth()+1);
+  const ts=D.turnos.map((t,i)=>({...t,i})).filter(t=>t.fecha>=S&&t.fecha<=E).sort((a,b)=>(a.fecha+a.in)<(b.fecha+b.in)?-1:1);
+  let tm=0,tp=0,dias=new Set(),html='';
+  for(const t of ts){const m=mins(t),pr=m/60*precioEn(t.fecha);tm+=m;tp+=pr;dias.add(t.fecha);const d=parse(t.fecha);
+    html+=`<tr><td>${DIAS[d.getDay()]} ${d.getDate()}/${d.getMonth()+1}</td><td>${t.in}–${t.out}</td><td>${fh(m)}</td><td>${plata(pr)}</td><td><button class="x" onclick="borrar(${t.i})">✕</button></td></tr>`}
+  document.getElementById('lista').innerHTML=html||'<tr><td colspan=5 class="muted">Sin horas cargadas esta semana</td></tr>';
+  document.getElementById('totH').textContent=fh(tm);document.getElementById('totP').textContent=plata(tp);document.getElementById('totD').textContent=dias.size;
+  document.getElementById('payDay').textContent='Cobrás el '+DIASL[pay.getDay()]+' '+pay.getDate()+'/'+(pay.getMonth()+1)+': '+plata(tp);
+  document.getElementById('rateInfo').textContent='Precio actual: '+plata(precioEn(ymd(new Date())))+' la hora';
+  document.getElementById('hist').innerHTML='Precios: '+D.precios.slice().sort((a,b)=>a.desde<b.desde?-1:1).map(x=>(x.desde=='2000-01-01'?'inicial':'desde '+x.desde.split('-').reverse().join('/'))+' '+plata(x.precio)).join(' · ');
+  document.getElementById('cDia').value=D.inicio;
+  const o=D.abierto,b=document.getElementById('btnFichar');
+  if(o){document.getElementById('openInfo').textContent='Entraste a las '+o.in+' ('+o.fecha.split('-').reverse().join('/')+')';b.textContent='Salí ahora';b.className='big red'}
+  else{document.getElementById('openInfo').textContent='No estás trabajando ahora.';b.textContent='Entré ahora';b.className='big green'}
+}
+function fichar(){const n=new Date();if(!D.abierto){D.abierto={fecha:ymd(n),in:hm(n)}}else{D.turnos.push({...D.abierto,out:hm(n)});D.abierto=null}save();off=0;render()}
+function agregar(){const f=mFecha.value,i=mIn.value,o=mOut.value;if(!f||!i||!o){alert('Completá fecha, entrada y salida');return}if(i==o){alert('La entrada y la salida son iguales');return}D.turnos.push({fecha:f,in:i,out:o});save();mIn.value='';mOut.value='';render()}
+function borrar(i){if(confirm('¿Borrar este turno?')){D.turnos.splice(i,1);save();render()}}
+function guardarPrecio(){const p=Number(cPrecio.value),f=cDesde.value;if(!(p>0)||!f){alert('Poné el precio y desde qué fecha');return}D.precios=D.precios.filter(x=>x.desde!=f);D.precios.push({desde:f,precio:p});save();cPrecio.value='';render();alert('Listo: '+plata(p)+' la hora desde el '+f.split('-').reverse().join('/'))}
+function guardarDia(){D.inicio=Number(cDia.value);save();off=0;render()}
+function mover(n){off+=n;render()}
+mFecha.value=ymd(new Date());cDesde.value=ymd(new Date());render();
+</script></body></html>
