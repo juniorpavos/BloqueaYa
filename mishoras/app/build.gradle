@@ -6,8 +6,8 @@ android {
         applicationId "com.celso.horas"
         minSdk 24
         targetSdk 34
-        versionCode 3
-        versionName "1.2"
+        versionCode 4
+        versionName "1.3"
     }
     signingConfigs { fija { storeFile file('horas.p12'); storeType 'pkcs12'; storePassword 'horas123'; keyAlias 'horas'; keyPassword 'horas123' } }
     buildTypes { release { minifyEnabled false; signingConfig signingConfigs.fija } }
