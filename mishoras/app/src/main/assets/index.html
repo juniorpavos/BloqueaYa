@@ -17,7 +17,7 @@ button.sec{background:#e3eaf6;color:#1565C0}button.red{background:#c62828}button
 .tot{display:flex;justify-content:space-between;text-align:center}.tot div{flex:1}
 .tot b{display:block;font-size:22px;color:#1565C0}.tot span{font-size:12px;color:#666}
 table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;border-bottom:1px solid #eee;text-align:left}
-th{font-size:12px;color:#666}.x{color:#c62828;font-weight:bold;padding:4px 8px;background:none}
+th{font-size:12px;color:#666}.ed{padding:6px 9px;font-size:15px}
 .nav{display:flex;justify-content:space-between;align-items:center}.nav button{padding:8px 14px}
 .muted{color:#666;font-size:13px}.pay{background:#e8f5e9;color:#2e7d32;padding:8px;border-radius:8px;margin-top:10px;font-size:14px;text-align:center}
 </style></head><body>
@@ -26,6 +26,7 @@ th{font-size:12px;color:#666}.x{color:#c62828;font-weight:bold;padding:4px 8px;b
 <div class="card" id="ficharCard">
   <h2>Fichar</h2>
   <div id="openInfo" class="muted" style="margin-bottom:8px"></div>
+  <button class="sec" id="btnAnular" style="display:none;margin-bottom:8px;width:100%" onclick="anular()">Me equivoqué, anular entrada</button>
   <button class="big green" id="btnFichar" onclick="fichar()">Entré ahora</button>
 </div>
 
@@ -39,18 +40,19 @@ th{font-size:12px;color:#666}.x{color:#c62828;font-weight:bold;padding:4px 8px;b
     <div><b id="totD">0</b><span>días</span></div>
   </div>
   <div class="pay" id="payDay"></div>
-  <table style="margin-top:10px"><thead><tr><th>Día</th><th>Horario</th><th>Horas</th><th>$</th><th></th></tr></thead><tbody id="lista"></tbody></table>
+  <table style="margin-top:10px"><thead><tr><th>Día</th><th>Horario</th><th>Horas</th><th>$</th><th>Editar / Borrar</th></tr></thead><tbody id="lista"></tbody></table>
 </div>
 
 <div class="card">
-  <h2>Cargar a mano</h2>
+  <h2 id="formTit">Cargar a mano</h2>
   <div class="row">
     <div class="f" style="min-width:140px"><label>Fecha</label><input type="date" id="mFecha"></div>
     <div class="f"><label>Entrada</label><input type="time" id="mIn"></div>
     <div class="f"><label>Salida</label><input type="time" id="mOut"></div>
   </div>
   <p class="muted">Si la salida es más temprano que la entrada, cuenta como que saliste al día siguiente (turno noche).</p>
-  <button class="big" onclick="agregar()">Agregar</button>
+  <button class="big" id="btnAdd" onclick="agregar()">Agregar</button>
+  <button class="big sec" id="btnCancel" style="display:none;margin-top:8px" onclick="cancelarEd()">Cancelar edición</button>
 </div>
 
 <div class="card">
@@ -71,7 +73,7 @@ th{font-size:12px;color:#666}.x{color:#c62828;font-weight:bold;padding:4px 8px;b
 <script>
 const DIAS=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'],DIASL=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 let D=JSON.parse(localStorage.getItem('mishoras')||'null')||{turnos:[],precios:[{desde:'2000-01-01',precio:4500}],inicio:4,abierto:null};
-let off=0;
+let off=0,edIdx=null;
 const save=()=>localStorage.setItem('mishoras',JSON.stringify(D));
 const p2=n=>String(n).padStart(2,'0');
 const ymd=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
@@ -89,7 +91,7 @@ function render(){
   const ts=D.turnos.map((t,i)=>({...t,i})).filter(t=>t.fecha>=S&&t.fecha<=E).sort((a,b)=>(a.fecha+a.in)<(b.fecha+b.in)?-1:1);
   let tm=0,tp=0,dias=new Set(),html='';
   for(const t of ts){const m=mins(t),pr=m/60*precioEn(t.fecha);tm+=m;tp+=pr;dias.add(t.fecha);const d=parse(t.fecha);
-    html+=`<tr><td>${DIAS[d.getDay()]} ${d.getDate()}/${d.getMonth()+1}</td><td>${t.in}–${t.out}</td><td>${fh(m)}</td><td>${plata(pr)}</td><td><button class="x" onclick="borrar(${t.i})">✕</button></td></tr>`}
+    html+=`<tr><td>${DIAS[d.getDay()]} ${d.getDate()}/${d.getMonth()+1}</td><td>${t.in}–${t.out}</td><td>${fh(m)}</td><td>${plata(pr)}</td><td style="white-space:nowrap"><button class="sec ed" onclick="editar(${t.i})">✏️</button> <button class="red ed" onclick="borrar(${t.i})">🗑</button></td></tr>`}
   document.getElementById('lista').innerHTML=html||'<tr><td colspan=5 class="muted">Sin horas cargadas esta semana</td></tr>';
   document.getElementById('totH').textContent=fh(tm);document.getElementById('totP').textContent=plata(tp);document.getElementById('totD').textContent=dias.size;
   document.getElementById('payDay').textContent='Cobrás el '+DIASL[pay.getDay()]+' '+pay.getDate()+'/'+(pay.getMonth()+1)+': '+plata(tp);
@@ -97,12 +99,16 @@ function render(){
   document.getElementById('hist').innerHTML='Precios: '+D.precios.slice().sort((a,b)=>a.desde<b.desde?-1:1).map(x=>(x.desde=='2000-01-01'?'inicial':'desde '+x.desde.split('-').reverse().join('/'))+' '+plata(x.precio)).join(' · ');
   document.getElementById('cDia').value=D.inicio;
   const o=D.abierto,b=document.getElementById('btnFichar');
-  if(o){document.getElementById('openInfo').textContent='Entraste a las '+o.in+' ('+o.fecha.split('-').reverse().join('/')+')';b.textContent='Salí ahora';b.className='big red'}
-  else{document.getElementById('openInfo').textContent='No estás trabajando ahora.';b.textContent='Entré ahora';b.className='big green'}
+  if(o){document.getElementById('openInfo').textContent='Entraste a las '+o.in+' ('+o.fecha.split('-').reverse().join('/')+')';b.textContent='Salí ahora';b.className='big red';btnAnular.style.display='block'}
+  else{document.getElementById('openInfo').textContent='No estás trabajando ahora.';b.textContent='Entré ahora';b.className='big green';btnAnular.style.display='none'}
 }
 function fichar(){const n=new Date();if(!D.abierto){D.abierto={fecha:ymd(n),in:hm(n)}}else{D.turnos.push({...D.abierto,out:hm(n)});D.abierto=null}save();off=0;render()}
-function agregar(){const f=mFecha.value,i=mIn.value,o=mOut.value;if(!f||!i||!o){alert('Completá fecha, entrada y salida');return}if(i==o){alert('La entrada y la salida son iguales');return}D.turnos.push({fecha:f,in:i,out:o});save();mIn.value='';mOut.value='';render()}
-function borrar(i){if(confirm('¿Borrar este turno?')){D.turnos.splice(i,1);save();render()}}
+function agregar(){const f=mFecha.value,i=mIn.value,o=mOut.value;if(!f||!i||!o){alert('Completá fecha, entrada y salida');return}if(i==o){alert('La entrada y la salida son iguales');return}if(edIdx!==null){D.turnos[edIdx]={fecha:f,in:i,out:o};edIdx=null}else D.turnos.push({fecha:f,in:i,out:o});save();mIn.value='';mOut.value='';modoForm();render()}
+function editar(i){const t=D.turnos[i];edIdx=i;mFecha.value=t.fecha;mIn.value=t.in;mOut.value=t.out;modoForm();document.getElementById('formTit').scrollIntoView({behavior:'smooth'})}
+function cancelarEd(){edIdx=null;mIn.value='';mOut.value='';mFecha.value=ymd(new Date());modoForm()}
+function modoForm(){const e=edIdx!==null;formTit.textContent=e?'Editando turno':'Cargar a mano';btnAdd.textContent=e?'Guardar cambios':'Agregar';btnCancel.style.display=e?'block':'none'}
+function anular(){if(confirm('¿Anular la entrada marcada?')){D.abierto=null;save();render()}}
+function borrar(i){if(confirm('¿Borrar este turno?')){D.turnos.splice(i,1);if(edIdx!==null)cancelarEd();save();render()}}
 function guardarPrecio(){const p=Number(cPrecio.value),f=cDesde.value;if(!(p>0)||!f){alert('Poné el precio y desde qué fecha');return}D.precios=D.precios.filter(x=>x.desde!=f);D.precios.push({desde:f,precio:p});save();cPrecio.value='';render();alert('Listo: '+plata(p)+' la hora desde el '+f.split('-').reverse().join('/'))}
 function guardarDia(){D.inicio=Number(cDia.value);save();off=0;render()}
 function mover(n){off+=n;render()}
