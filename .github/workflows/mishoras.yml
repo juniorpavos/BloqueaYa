@@ -16,10 +16,10 @@ jobs:
       - uses: gradle/actions/setup-gradle@v3
         with: { gradle-version: '8.7' }
       - run: cd mishoras && gradle :app:assembleRelease --no-daemon
-      - run: cp mishoras/app/build/outputs/apk/release/app-release.apk MisHoras.apk
+      - run: cp mishoras/app/build/outputs/apk/release/app-release.apk horasdesalida.apk
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: mishoras-v1.0.${{ github.run_number }}
-          name: MisHoras v1.0.${{ github.run_number }}
-          files: MisHoras.apk
+          tag_name: horasdesalida-v1.0.${{ github.run_number }}
+          name: horasdesalida v1.0.${{ github.run_number }}
+          files: horasdesalida.apk
           make_latest: false
